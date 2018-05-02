@@ -34,6 +34,7 @@ class JMSModelDescriber implements ModelDescriberInterface, ModelRegistryAwareIn
     private $factory;
     private $namingStrategy;
     private $doctrineReader;
+    private $usingNestedGroups = [];
 
     public function __construct(
         MetadataFactoryInterface $factory,
@@ -71,8 +72,13 @@ class JMSModelDescriber implements ModelDescriberInterface, ModelRegistryAwareIn
 
             $name = $this->namingStrategy->translateName($item);
             $groups = $model->getGroups();
+
+            $usingNestedGroups = false;
             if (isset($groups[$name]) && is_array($groups[$name])) {
                 $groups = $model->getGroups()[$name];
+                $usingNestedGroups = true;
+            } elseif (!isset($groups[$name]) && !empty($this->usingNestedGroups[spl_object_hash($model)])) {
+                $groups = [GroupsExclusionStrategy::DEFAULT_GROUP];
             }
 
             // read property options from Swagger Property annotation if it exists
@@ -97,7 +103,7 @@ class JMSModelDescriber implements ModelDescriberInterface, ModelRegistryAwareIn
                 if ($isHash) {
                     $property->setType('object');
 
-                    $typeDef = $this->findPropertyType($type, $groups);
+                    $typeDef = $this->findPropertyType($type, $groups, $usingNestedGroups);
 
                     // in the case of a virtual property, set it as free object type
                     $property->merge(['additionalProperties' => $typeDef ?: []]);
@@ -111,7 +117,7 @@ class JMSModelDescriber implements ModelDescriberInterface, ModelRegistryAwareIn
                 $type = $item->type['name'];
             }
 
-            $typeDef = $this->findPropertyType($type, $groups);
+            $typeDef = $this->findPropertyType($type, $groups, $usingNestedGroups);
 
             // virtual property
             if (!$typeDef) {
@@ -142,10 +148,11 @@ class JMSModelDescriber implements ModelDescriberInterface, ModelRegistryAwareIn
     /**
      * @param string     $type
      * @param array|null $groups
+     * @param bool       $usingNestedGroups
      *
      * @return array|null
      */
-    private function findPropertyType(string $type, array $groups = null)
+    private function findPropertyType(string $type, array $groups = null, bool $usingNestedGroups = false)
     {
         $typeDef = [];
         if (in_array($type, ['boolean', 'string', 'array'])) {
@@ -164,9 +171,12 @@ class JMSModelDescriber implements ModelDescriberInterface, ModelRegistryAwareIn
                 return null;
             }
 
-            $typeDef['$ref'] = $this->modelRegistry->register(
-                new Model(new Type(Type::BUILTIN_TYPE_OBJECT, false, $type), $groups)
-            );
+            $model = new Model(new Type(Type::BUILTIN_TYPE_OBJECT, false, $type), $groups);
+            $typeDef['$ref'] = $this->modelRegistry->register($model);
+
+            if ($usingNestedGroups) {
+                $this->usingNestedGroups[spl_object_hash($model)] = true;
+            }
         }
 
         return $typeDef;
