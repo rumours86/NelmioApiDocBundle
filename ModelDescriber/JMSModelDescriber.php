@@ -78,7 +78,7 @@ class JMSModelDescriber implements ModelDescriberInterface, ModelRegistryAwareIn
                 $groups = $model->getGroups()[$name];
                 $usingNestedGroups = true;
             } elseif (!isset($groups[$name]) && !empty($this->usingNestedGroups[spl_object_hash($model)])) {
-                $groups = [GroupsExclusionStrategy::DEFAULT_GROUP];
+                $groups = false === $this->propertyTypeUsesGroups($item->type) ? null : [GroupsExclusionStrategy::DEFAULT_GROUP];
             }
 
             // read property options from Swagger Property annotation if it exists
@@ -180,6 +180,28 @@ class JMSModelDescriber implements ModelDescriberInterface, ModelRegistryAwareIn
         }
 
         return $typeDef;
+    }
+
+    /**
+     * @param array $type
+     *
+     * @return bool|null
+     */
+    private function propertyTypeUsesGroups(array $type)
+    {
+        try {
+            $metadata = $this->factory->getMetadataForClass($type['name']);
+
+            foreach ($metadata->propertyMetadata as $item) {
+                if ($item->groups && $item->groups != [GroupsExclusionStrategy::DEFAULT_GROUP]) {
+                    return true;
+                }
+            }
+
+            return false;
+        } catch (\ReflectionException $e) {
+            return null;
+        }
     }
 
     private function registerPropertyType(array $typeDef, $property)
