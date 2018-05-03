@@ -61,7 +61,7 @@ final class ApiDocGenerator
         }
 
         $this->swagger = new Swagger();
-        $modelRegistry = new ModelRegistry($this->modelDescribers, $this->swagger);
+        $modelRegistry = new ModelRegistry($this->modelDescribers, $this->swagger, $this->alternativeNames);
         foreach ($this->describers as $describer) {
             if ($describer instanceof ModelRegistryAwareInterface) {
                 $describer->setModelRegistry($modelRegistry);

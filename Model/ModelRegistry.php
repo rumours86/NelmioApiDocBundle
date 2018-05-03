@@ -36,10 +36,11 @@ final class ModelRegistry
      *
      * @internal
      */
-    public function __construct($modelDescribers, Swagger $api)
+    public function __construct($modelDescribers, Swagger $api, array $alternativeNames = [])
     {
         $this->modelDescribers = $modelDescribers;
         $this->api = $api;
+        $this->alternativeNames = $alternativeNames;
     }
 
     public function register(Model $model): string
