@@ -78,7 +78,7 @@ class JMSModelDescriber implements ModelDescriberInterface, ModelRegistryAwareIn
                 $groups = $model->getGroups()[$name];
                 $usingNestedGroups = true;
             } elseif (!isset($groups[$name]) && !empty($this->usingNestedGroups[spl_object_hash($model)])) {
-                $groups = [GroupsExclusionStrategy::DEFAULT_GROUP];
+                $groups = null;
             }
 
             // read property options from Swagger Property annotation if it exists
