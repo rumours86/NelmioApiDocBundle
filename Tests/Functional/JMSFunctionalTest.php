@@ -13,6 +13,54 @@ namespace Nelmio\ApiDocBundle\Tests\Functional;
 
 class JMSFunctionalTest extends WebTestCase
 {
+    public function testModelPictureDocumentation()
+    {
+        $this->assertEquals([
+            'type' => 'object',
+            'properties' => [
+                'only_direct_picture_mini' => [
+                    'type' => 'integer',
+                ],
+            ],
+        ], $this->getModel('JMSPicture')->toArray());
+    }
+
+    public function testModeChatDocumentation()
+    {
+        $this->assertEquals([
+            'type' => 'object',
+            'properties' => [
+                'id' => [
+                    'type' => 'integer',
+                ],
+                'members' => [
+                    'items' => [
+                        '$ref' => '#/definitions/JMSChatUser',
+                    ],
+                    'type' => 'array',
+                ],
+            ],
+        ], $this->getModel('JMSChat')->toArray());
+
+        $this->assertEquals([
+            'type' => 'object',
+            'properties' => [
+                'picture' => [
+                    '$ref' => '#/definitions/JMSPicture2',
+                ],
+            ],
+        ], $this->getModel('JMSChatUser')->toArray());
+
+        $this->assertEquals([
+            'type' => 'object',
+            'properties' => [
+                'id' => [
+                    'type' => 'integer',
+                ],
+            ],
+        ], $this->getModel('JMSPicture2')->toArray());
+    }
+
     public function testModelDocumentation()
     {
         $this->assertEquals([
