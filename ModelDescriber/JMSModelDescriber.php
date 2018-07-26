@@ -77,15 +77,17 @@ class JMSModelDescriber implements ModelDescriberInterface, ModelRegistryAwareIn
                 $previousGroups = $groups;
                 $groups = $model->getGroups()[$name];
             } elseif (!isset($groups[$name]) && !empty($this->previousGroups[spl_object_hash($model)])) {
-                $groups = $this->previousGroups[spl_object_hash($model)];
-                if (is_array($groups)) {
-                    $groups = array_filter($groups, 'is_scalar');
+                if (!$this->namingStrategy) { // jms 2.0
+                    $this->previousGroups[spl_object_hash($model)];
+                } else {
+                    $groups = false === $this->propertyTypeUsesGroups($item->type) ? null : [GroupsExclusionStrategy::DEFAULT_GROUP];
                 }
+
             } elseif (is_array($groups)) {
                 $groups = array_filter($groups, 'is_scalar');
             }
 
-            if ([GroupsExclusionStrategy::DEFAULT_GROUP] === $groups) {
+            if ([GroupsExclusionStrategy::DEFAULT_GROUP] === $groups || $groups === []) {
                 $groups = null;
             }
 
@@ -134,7 +136,7 @@ class JMSModelDescriber implements ModelDescriberInterface, ModelRegistryAwareIn
      *
      * @return array|null
      */
-    private function findPropertyType(string $type, array $groups = null, array $previousGroups = null)
+    private function findPropertyType(string $type, array $groups = null, $previousGroups = null)
     {
         $typeDef = [];
         if (in_array($type, ['boolean', 'string', 'array'])) {
@@ -148,6 +150,8 @@ class JMSModelDescriber implements ModelDescriberInterface, ModelRegistryAwareIn
             $typeDef['type'] = 'string';
             $typeDef['format'] = 'date-time';
         } else {
+
+
             // we can use property type also for custom handlers, then we don't have here real class name
             if (!class_exists($type)) {
                 return null;
@@ -178,9 +182,33 @@ class JMSModelDescriber implements ModelDescriberInterface, ModelRegistryAwareIn
         }
     }
 
-    private function describeItem(array $type, $property, array $groups = null, array $previousGroups = null)
+    /**
+     * @param array $type
+     *
+     * @return bool|null
+     */
+    private function propertyTypeUsesGroups(array $type)
     {
-        if (list($nestedType, $isHash) = $this->getNestedTypeInArray($type)) { // @ todo update a bit getNestedTypeInArray and describe ($type = $item->type)
+        try {
+            $metadata = $this->factory->getMetadataForClass($type['name']);
+
+            foreach ($metadata->propertyMetadata as $item) {
+                if ($item->groups && $item->groups != [GroupsExclusionStrategy::DEFAULT_GROUP]) {
+                    return true;
+                }
+            }
+
+            return false;
+        } catch (\ReflectionException $e) {
+            return null;
+        }
+    }
+
+    private function describeItem(array $type, $property, array $groups = null, $previousGroups = null)
+    {
+        $nestedTypeInfo = $this->getNestedTypeInArray($type);
+        if (null !== $nestedTypeInfo) {
+            list($nestedType, $isHash) = $nestedTypeInfo;
             if ($isHash) {
                 $property->setType('object');
                 // in the case of a virtual property, set it as free object type
@@ -192,10 +220,9 @@ class JMSModelDescriber implements ModelDescriberInterface, ModelRegistryAwareIn
             }
 
             $property->setType('array');
-            $this->describeItem($nestedType, $property->getItems(), $groups);
-        }
+            $this->describeItem($nestedType, $property->getItems(), $groups, $previousGroups);
 
-        if ($typeDef = $this->findPropertyType($type['name'], $groups, $previousGroups)) {
+        } elseif ($typeDef = $this->findPropertyType($type['name'], $groups, $previousGroups)) {
             $this->registerPropertyType($typeDef, $property);
         }
     }
