@@ -22,6 +22,7 @@ use Nelmio\ApiDocBundle\Routing\FilteredRouteCollectionBuilder;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\Argument\TaggedIteratorArgument;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
@@ -145,7 +146,7 @@ final class NelmioApiDocExtension extends Extension implements PrependExtensionI
                 ->setPublic(false)
                 ->setArguments([
                     new Reference('jms_serializer.metadata_factory'),
-                    new Reference('jms_serializer.naming_strategy'),
+                    new Reference('jms_serializer.naming_strategy', ContainerInterface::NULL_ON_INVALID_REFERENCE),
                     new Reference('annotation_reader'),
                 ])
                 ->addTag('nelmio_api_doc.model_describer', ['priority' => 50]);
